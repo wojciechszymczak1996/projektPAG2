@@ -4,7 +4,7 @@ import networkx
 # https://networkx.github.io/documentation/networkx-1.10/reference/index.html
 G = networkx.Graph()
 
-fc = "C:\Users\S276113.S403-K27\Desktop\pag_projekt2\BDOT_Torun\kuj_pom_miasto\L4_1_BDOT10k__OT_SKJZ_L.shp"
+fc = "C:\Users\student\Desktop\pag\BDOT_Torun\kujawsko_pomorskie_m_Torun\L4_1_BDOT10k__OT_SKJZ_L.shp"
 cursor = arcpy.da.SearchCursor(fc,["OID@", "SHAPE@", "SHAPE@LENGTH"]) 
 
 points = []
@@ -26,10 +26,38 @@ for row in cursor:
 
         G.add_edge(id_from, id_to, ObjectID = row[0], length = row[2])
         edges.append([id_from, id_to, row[0], row[2]])
-    break;
-print len(points)
-print networkx.number_of_nodes(G)
-print len(edges)
-print networkx.number_of_edges(G)
+numOfNodes = networkx.number_of_nodes(G)
+numOfEdges = networkx.number_of_edges(G)
 
-print networkx.get_node_attributes(G,['X','Y'])
+print numOfNodes
+print numOfEdges
+
+with open('edgesNodes.txt','w') as f:
+    f.write('EDGES\n')
+    f.write('ID, X, Y\n')
+    nodes = [None] * networkx.number_of_nodes(G)
+    for id, x in networkx.get_node_attributes(G,'X').items():
+        nodes[id] = ', '.join([str(id),str(x)])
+    for id, y in networkx.get_node_attributes(G,'Y').items():
+        nodes[id] = ', '.join([nodes[id],str(x)])
+    for node in nodes:
+        f.write(node)
+        f.write('\n')
+    i=0
+    f.write('NODES\n')
+    f.write('ID_FROM, ID_TO, OBJECT_ID, LENGTH\n')
+    edges = [None] * networkx.number_of_edges(G)
+    for ids, oid in networkx.get_edge_attributes(G,'ObjectID').items():
+        edges[i] = ', '.join([str(ids[0]),str(ids[1]),str(oid)])
+        i = i + 1
+    i=0
+    for ids, length in networkx.get_edge_attributes(G,'length').items():
+        edges[i] = ', '.join([edges[i],str(length)])
+        i = i + 1
+    for edge in edges:
+        f.write(edge)
+        f.write('\n')
+
+with open('breadthFirstSearch.txt','w') as f:
+    for edge in (list(networkx.bfs_edges(G,0))):
+        f.write(str(edge))
