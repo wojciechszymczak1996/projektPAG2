@@ -10,8 +10,8 @@ do sprawka opis biblioteki jakie zalety jakie wady
 '''
 G = networkx.Graph()
 
-fc = "C:\Users\student\Desktop\pag\BDOT_Torun\kujawsko_pomorskie_m_Torun\L4_1_BDOT10k__OT_SKJZ_L.shp"
-cursor = arcpy.da.SearchCursor(fc,["OID@", "SHAPE@", "SHAPE@LENGTH"]) 
+fc = "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\pag_projekt2\BDOT_Torun\L4_1_BDOT10k__OT_SKJZ_L.shp"
+cursor = arcpy.da.SearchCursor(fc,["OID@", "SHAPE@", "SHAPE@LENGTH", "klasaDrogi"])
 
 points = []
 edges = []
@@ -30,7 +30,18 @@ for row in cursor:
         id_from = points.index((part[0].X,part[0].Y))
         id_to = points.index((part[-1].X, part[-1].Y))
 
-        G.add_edge(id_from, id_to, ObjectID = row[0], length = row[2])
+        if row[3]=='A':
+            speed=140
+        elif row[3] == 'D' or row[3] =='I' or row[3] =='L' or row[3] =='Z':
+            speed = 50
+        elif row[3] == 'G':
+            speed = 80
+        elif row[3] == 'GP':
+            speed = 100
+        elif row[3] == 'S':
+            speed = 120
+        time = row[2]/speed/1000*60
+        G.add_edge(id_from, id_to, ObjectID = row[0], length = row[2], time = time)
         edges.append([id_from, id_to, row[0], row[2]])
 numOfNodes = networkx.number_of_nodes(G)
 numOfEdges = networkx.number_of_edges(G)
@@ -51,7 +62,7 @@ with open('edgesNodes.txt','w') as f:
         f.write('\n')
     i=0
     f.write('NODES\n')
-    f.write('ID_FROM, ID_TO, OBJECT_ID, LENGTH\n')
+    f.write('ID_FROM, ID_TO, OBJECT_ID, LENGTH, TIME\n')
     edges = [None] * networkx.number_of_edges(G)
     for ids, oid in networkx.get_edge_attributes(G,'ObjectID').items():
         edges[i] = ', '.join([str(ids[0]),str(ids[1]),str(oid)])
@@ -60,17 +71,21 @@ with open('edgesNodes.txt','w') as f:
     for ids, length in networkx.get_edge_attributes(G,'length').items():
         edges[i] = ', '.join([edges[i],str(length)])
         i = i + 1
+    i = 0
+    for ids, time in networkx.get_edge_attributes(G, 'time').items():
+        edges[i] = ', '.join([edges[i], str(time)])
+        i = i + 1
     for edge in edges:
         f.write(edge)
         f.write('\n')
 
-arcpy.CreateFeatureclass_management("C:\Users\student\Desktop\pag", "points.shp", "POINT")
-cursor = arcpy.da.InsertCursor("C:\Users\student\Desktop\pag\points.shp", ("ID", "SHAPE@XY"))
+arcpy.CreateFeatureclass_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki", "points.shp", "POINT")
+cursor = arcpy.da.InsertCursor("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp", ("ID", "SHAPE@XY"))
 with open('dijkstra.txt', 'w') as f:
-    for key, value in networkx.single_source_dijkstra_path_length(G,0,cutoff=1000,weight='length').items():
+    for key, value in networkx.single_source_dijkstra_path_length(G,0,cutoff=2,weight='time').items():
         '''if key == 0:
             continue;'''
-        f.write('FROM 0 TO {0} IS {1} METERS\n'.format(key,value))
+        f.write('FROM 0 TO {0} IS {1} MINUTES\n'.format(key,value))
 
         X=networkx.get_node_attributes(G,'X')
         X=X[key]
@@ -81,23 +96,7 @@ with open('dijkstra.txt', 'w') as f:
 
 del cursor
 
-arcpy.MinimumBoundingGeometry_management("C:\Users\student\Desktop\pag\points.shp",
-                                         "C:\Users\student\Desktop\pag\convex_points.shp",
+arcpy.MinimumBoundingGeometry_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp",
+                                         "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\convex_points.shp",
                                          "CONVEX_HULL", "ALL")
-
-
-
-xy = arcpy.Array
-
-for id in networkx.astar_path(G, 0, 949, heuristic=None, weight='length'):
-    X=networkx.get_node_attributes(G,'X')
-    X=X[id]
-    Y=networkx.get_node_attributes(G,'Y')
-    Y=Y[id]
-    xy.append(arcpy.Point(X,Y))
-
-arcpy.CreateFeatureclass_management(r"C:\Users\student\Desktop\pag", r"xyz.shp", "POLYLINE")
-cursor = arcpy.da.InsertCursor(r"C:\Users\student\Desktop\pag\xyz.shp", "SHAPE@XY")
-cursor.insertRow(xy)
-del cursor
 
