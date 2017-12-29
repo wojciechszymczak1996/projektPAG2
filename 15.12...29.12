@@ -8,7 +8,7 @@ https://community.esri.com/thread/87205
 http://pro.arcgis.com/en/pro-app/tool-reference/data-management/minimum-bounding-geometry.htm
 do sprawka opis biblioteki jakie zalety jakie wady
 '''
-G = networkx.Graph()
+G = networkx.DiGraph()
 
 fc = "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\pag_projekt2\BDOT_Torun\L4_1_BDOT10k__OT_SKJZ_L.shp"
 cursor = arcpy.da.SearchCursor(fc,["OID@", "SHAPE@", "SHAPE@LENGTH", "klasaDrogi"])
@@ -42,7 +42,10 @@ for row in cursor:
             speed = 120
         time = row[2]/speed/1000*60
         G.add_edge(id_from, id_to, ObjectID = row[0], length = row[2], time = time)
-        edges.append([id_from, id_to, row[0], row[2]])
+        edges.append([id_from, id_to, row[0], row[2], time])
+        if row[0]%2==0:
+            G.add_edge(id_to, id_from, ObjectID = row[0], length = row[2], time = time)
+            edges.append([id_to, id_from, row[0], row[2], time])
 numOfNodes = networkx.number_of_nodes(G)
 numOfEdges = networkx.number_of_edges(G)
 
@@ -99,4 +102,3 @@ del cursor
 arcpy.MinimumBoundingGeometry_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp",
                                          "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\convex_points.shp",
                                          "CONVEX_HULL", "ALL")
-
