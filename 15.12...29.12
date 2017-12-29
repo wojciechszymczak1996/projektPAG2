@@ -102,3 +102,17 @@ del cursor
 arcpy.MinimumBoundingGeometry_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp",
                                          "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\convex_points.shp",
                                          "CONVEX_HULL", "ALL")
+
+xy = arcpy.Array
+
+for id in networkx.astar_path(G, 0, 949, heuristic=None, weight='length'):
+    X=networkx.get_node_attributes(G,'X')
+    X=X[id]
+    Y=networkx.get_node_attributes(G,'Y')
+    Y=Y[id]
+    xy.append(arcpy.Point(X,Y))
+
+arcpy.CreateFeatureclass_management(r"C:\Users\student\Desktop\pag", r"xyz.shp", "POLYLINE")
+cursor = arcpy.da.InsertCursor(r"C:\Users\student\Desktop\pag\xyz.shp", "SHAPE@XY")
+cursor.insertRow(xy)
+del cursor
