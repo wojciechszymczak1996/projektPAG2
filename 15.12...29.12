@@ -1,12 +1,11 @@
 import arcpy
 import networkx
-
+arcpy.env.overwriteOutput = True
 '''
 https://networkx.github.io/documentation/networkx-1.10/reference/index.html
 https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.classes.function.all_neighbors.html
 https://community.esri.com/thread/87205
 http://pro.arcgis.com/en/pro-app/tool-reference/data-management/minimum-bounding-geometry.htm
-do sprawka opis biblioteki jakie zalety jakie wady
 '''
 G = networkx.DiGraph()
 
@@ -43,7 +42,7 @@ for row in cursor:
         time = row[2]/speed/1000*60
         G.add_edge(id_from, id_to, ObjectID = row[0], length = row[2], time = time)
         edges.append([id_from, id_to, row[0], row[2], time])
-        if row[0]%2==0:
+        if row[0]%1==0:
             G.add_edge(id_to, id_from, ObjectID = row[0], length = row[2], time = time)
             edges.append([id_to, id_from, row[0], row[2], time])
 numOfNodes = networkx.number_of_nodes(G)
@@ -81,13 +80,13 @@ with open('edgesNodes.txt','w') as f:
     for edge in edges:
         f.write(edge)
         f.write('\n')
-
+features=[]
 arcpy.CreateFeatureclass_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki", "points.shp", "POINT")
+
 cursor = arcpy.da.InsertCursor("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp", ("ID", "SHAPE@XY"))
 with open('dijkstra.txt', 'w') as f:
     for key, value in networkx.single_source_dijkstra_path_length(G,0,cutoff=2,weight='time').items():
-        '''if key == 0:
-            continue;'''
+
         f.write('FROM 0 TO {0} IS {1} MINUTES\n'.format(key,value))
 
         X=networkx.get_node_attributes(G,'X')
@@ -96,23 +95,16 @@ with open('dijkstra.txt', 'w') as f:
         Y=Y[key]
         row = [key,(X,Y)]
         cursor.insertRow(row)
+        rest=2-value
+        for key in G.in_edges(key, data=True):
+            dist = rest/key[2]['time']*100
+            length = dist*key[2]['length']/100
+            if dist <100:
+                pntGeom = arcpy.PointGeometry(arcpy.Point(X,Y))
+                features.append(pntGeom.buffer(length))
 
 del cursor
-
+arcpy.CopyFeatures_management(features, "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\okregi.shp")
 arcpy.MinimumBoundingGeometry_management("C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\points.shp",
                                          "C:\Users\Wojciech\Desktop\semestr5\pag\pag projekt2\wyniki\convex_points.shp",
                                          "CONVEX_HULL", "ALL")
-
-xy = arcpy.Array
-
-for id in networkx.astar_path(G, 0, 949, heuristic=None, weight='length'):
-    X=networkx.get_node_attributes(G,'X')
-    X=X[id]
-    Y=networkx.get_node_attributes(G,'Y')
-    Y=Y[id]
-    xy.append(arcpy.Point(X,Y))
-
-arcpy.CreateFeatureclass_management(r"C:\Users\student\Desktop\pag", r"xyz.shp", "POLYLINE")
-cursor = arcpy.da.InsertCursor(r"C:\Users\student\Desktop\pag\xyz.shp", "SHAPE@XY")
-cursor.insertRow(xy)
-del cursor
